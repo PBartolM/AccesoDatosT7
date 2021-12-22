@@ -17,6 +17,7 @@ import com.google.cloud.firestore.DocumentReference
 import com.google.firebase.FirebaseApp
 import com.google.firebase.cloud.FirestoreClient
 import java.awt.EventQueue
+import com.google.firebase.*;
 
 class EstadisticaCF : JFrame() {
 
@@ -58,21 +59,61 @@ class EstadisticaCF : JFrame() {
 
         val db = FirestoreClient.getFirestore()
 
-        val docRef = db.collection("Estadistica").listDocuments()
+        val docRef = db.collection("Estadistica")
         val mutao = mutableSetOf<String>()
         // Instruccions per a omplir el JComboBox amb les províncies
-        for (i in docRef){
-            val docu=i.get()
-            val nombre = docu.get().getString("Provincia").toString()
-            mutao.add(nombre)
+
+        docRef.addSnapshotListener { snapshot, e ->
+            if (e != null) {
+                System.err.println("Listen failed: " + e)
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null ) {
+
+                for (i in snapshot.documents){
+                    val nombre=i.getString("Provincia").toString()
+                    mutao.add(nombre)
+                }
+
+            } else {
+                println("Current data: null")
+            }
+            for (i in mutao.sorted()){
+                comboProv.addItem(i)
+            }
         }
 
-        for (i in mutao.sorted()){
-            comboProv.addItem(i)
-        }
 
         // Instruccions per agafar la informació de tots els anys de la província triada
         comboProv.addActionListener() {
+            area.text=""
+            val mutasao = mutableSetOf<String>()
+            docRef.addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    System.err.println("Listen failed: " + e)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null ) {
+                    for (i in snapshot.documents){
+                        val nombre=i.getString("Provincia").toString()
+                        if(nombre.equals(comboProv.selectedItem.toString())){
+                            val any = i.getString("any").toString()
+                            val dones = i.getString("Dones").toString()
+                            val homes = i.getString("Homes").toString()
+                            mutasao.add("$any: $dones - $homes")
+                        }
+                    }
+
+
+                } else {
+                    println("Current data: null")
+                }
+                for (i in mutasao.sorted()){
+                    area.text=area.text + "$i\n"
+                }
+            }
 
         }
     }
